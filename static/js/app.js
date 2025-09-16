@@ -19,25 +19,31 @@ class ClientInfoApp {
         });
     }
 
+    // Utilitários de UI
+    el(id) { return document.getElementById(id); }
+    show(id) { this.el(id).classList.remove('hidden'); }
+    hide(id) { this.el(id).classList.add('hidden'); }
+    setText(id, text) { this.el(id).textContent = text; }
+
     showLoading() {
-        document.getElementById('loading').classList.remove('hidden');
-        document.getElementById('results').classList.add('hidden');
-        document.getElementById('error').classList.add('hidden');
+        this.show('loading');
+        this.hide('results');
+        this.hide('error');
     }
 
     hideLoading() {
-        document.getElementById('loading').classList.add('hidden');
+        this.hide('loading');
     }
 
     showError(message) {
-        document.getElementById('errorMessage').textContent = message;
-        document.getElementById('error').classList.remove('hidden');
-        document.getElementById('results').classList.add('hidden');
+        this.setText('errorMessage', message);
+        this.show('error');
+        this.hide('results');
     }
 
     showResults() {
-        document.getElementById('results').classList.remove('hidden');
-        document.getElementById('error').classList.add('hidden');
+        this.show('results');
+        this.hide('error');
     }
 
     async collectClientInfo() {
@@ -55,9 +61,13 @@ class ClientInfoApp {
                 },
                 body: JSON.stringify(clientData)
             });
-            
+
+            if (!response.ok) {
+                throw new Error(`Falha na requisição (HTTP ${response.status})`);
+            }
+
             const data = await response.json();
-            
+
             if (data.success) {
                 this.displayClientInfo(data.data);
                 this.showResults();
@@ -760,7 +770,7 @@ class ClientInfoApp {
         const browserItems = [
             { label: 'User Agent', value: clientInfo.browser.userAgent },
             { label: 'Idioma', value: clientInfo.browser.language },
-            { label: 'Idiomas Suportados', value: clientInfo.browser.languages.join(', ') },
+            { label: 'Idiomas Suportados', value: Array.isArray(clientInfo.browser.languages) ? clientInfo.browser.languages.join(', ') : 'N/A' },
             { label: 'Plataforma', value: clientInfo.browser.platform },
             { label: 'Vendor', value: clientInfo.browser.vendor },
             { label: 'Cookies', value: clientInfo.browser.cookieEnabled ? 'Habilitado' : 'Desabilitado' },
@@ -942,9 +952,13 @@ class ClientInfoApp {
                 },
                 body: JSON.stringify(clientData)
             });
-            
+
+            if (!response.ok) {
+                throw new Error(`Falha na requisição (HTTP ${response.status})`);
+            }
+
             const data = await response.json();
-            
+
             if (data.success) {
                 // Criar e baixar arquivo JSON
                 const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });

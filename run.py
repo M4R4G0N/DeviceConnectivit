@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Script de inicialização da aplicação
-"""
+Script de inicialização da aplicação.
 
-import sys
-import os
+Mantém as mensagens de inicialização alinhadas ao app principal e
+remove imports não utilizados.
+"""
 
 def main():
     """Inicia a aplicação Flask"""

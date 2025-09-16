@@ -1,4 +1,4 @@
-# Coletor de Informações do Cliente
+# DeviceConnectivity (Coletor de Informações do Cliente)
 
 Aplicação web Flask para coleta e análise de informações detalhadas do navegador, dispositivo e conexão do visitante.
 
@@ -21,7 +21,7 @@ Aplicação web Flask para coleta e análise de informações detalhadas do nave
 ## 📁 Estrutura do Projeto
 
 ```
-DeviceConnectivityTests/
+DeviceConnectivit/
 ├── app.py                    # Aplicação Flask principal
 ├── requirements.txt          # Dependências Python
 ├── README.md                # Este arquivo
@@ -52,9 +52,12 @@ python app.py
 ```
 
 ### 3. Acessar Interface Web
-Abra seu navegador e acesse: **http://localhost:5000**
+Abra seu navegador e acesse o link: **http://localhost:5000**
 
-### 4. Usar Funcionalidades
+### 4. Versão Online (GitHub Pages)
+Abra seu navegador e acesse o link: **https://m4r4g0n.github.io/DeviceConnectivit/**
+
+### 5. Usar Funcionalidades
 - **Coletar Informações**: Clique no botão para coletar dados do cliente
 - **Exportar Relatório**: Baixe um relatório JSON completo
 

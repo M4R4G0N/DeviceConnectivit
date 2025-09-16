@@ -13,7 +13,7 @@ import uuid
 import subprocess
 import os
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List
 import argparse
 
 
@@ -31,7 +31,7 @@ class DeviceDetector:
             mac = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) 
                            for ele in range(0,8*6,8)][::-1])
             return f"device_{mac.replace(':', '')}"
-        except:
+        except Exception:
             # Fallback para hostname
             return f"device_{socket.gethostname()}"
     
@@ -60,7 +60,7 @@ class DeviceDetector:
             hours = int((uptime_seconds % 86400) // 3600)
             minutes = int((uptime_seconds % 3600) // 60)
             return f"{days}d {hours}h {minutes}m"
-        except:
+        except Exception:
             return "N/A"
     
     def get_network_info(self) -> Dict:
@@ -106,8 +106,8 @@ class DeviceDetector:
             gateways = netifaces.gateways()
             network_info["gateways"] = gateways
             
-        except Exception as e:
-            network_info["error"] = str(e)
+        except Exception as error:
+            network_info["error"] = str(error)
         
         return network_info
     
@@ -120,7 +120,7 @@ class DeviceDetector:
             local_ip = s.getsockname()[0]
             s.close()
             return local_ip
-        except:
+        except Exception:
             return "127.0.0.1"
     
     def _is_interface_up(self, interface: str) -> bool:
@@ -129,7 +129,7 @@ class DeviceDetector:
             # Verifica se a interface tem endereços IP
             addrs = netifaces.ifaddresses(interface)
             return netifaces.AF_INET in addrs and len(addrs[netifaces.AF_INET]) > 0
-        except:
+        except Exception:
             return False
     
     def get_hardware_info(self) -> Dict:
@@ -187,11 +187,11 @@ class DeviceDetector:
                 "disk": disk_info,
                 "system": system_info
             }
-        except Exception as e:
-            return {"error": str(e)}
+        except Exception as error:
+            return {"error": str(error)}
     
     def get_installed_software(self) -> List[Dict]:
-        """Lista software instalado (limitado)"""
+        """Lista software instalado (limitado). Retorna no máximo 20 pacotes Python."""
         software = []
         
         try:
@@ -205,8 +205,12 @@ class DeviceDetector:
                     "version": pkg["version"],
                     "type": "python_package"
                 } for pkg in packages[:20]])  # Limita a 20 pacotes
-        except:
-            pass
+        except subprocess.TimeoutExpired:
+            software.append({"error": "pip list timeout"})
+        except json.JSONDecodeError:
+            software.append({"error": "pip list output inválido"})
+        except Exception as error:
+            software.append({"error": str(error)})
         
         return software
     
@@ -276,8 +280,8 @@ class DeviceDetector:
                         "discovered_at": datetime.now().isoformat()
                     })
             
-        except Exception as e:
-            print(f"Erro ao descobrir dispositivos: {e}")
+        except Exception as error:
+            print(f"Erro ao descobrir dispositivos: {error}")
         
         return devices
     
@@ -287,7 +291,7 @@ class DeviceDetector:
             mac = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) 
                            for ele in range(0,8*6,8)][::-1])
             return mac
-        except:
+        except Exception:
             return "unknown"
     
     def collect_all_info(self) -> Dict:
@@ -326,7 +330,7 @@ class DeviceDetector:
         return filename
     
     def print_summary(self):
-        """Imprime um resumo das informações"""
+        """Imprime um resumo legível das informações coletadas."""
         info = self.collect_all_info()
         
         print("\n" + "="*60)
