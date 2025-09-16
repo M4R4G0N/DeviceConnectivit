@@ -2,27 +2,22 @@
 
 class ClientInfoApp {
     constructor() {
+        this.el = (id) => document.getElementById(id);
+        this.show = (id) => this.el(id).classList.remove('hidden');
+        this.hide = (id) => this.el(id).classList.add('hidden');
+        this.setText = (id, text) => this.el(id).textContent = text;
         this.init();
     }
 
     init() {
-        this.bindEvents();
+        // Gatilhos de UI
+        this.el('collectClientInfo').addEventListener('click', () => this.collectClientInfo());
+        this.el('exportReport').addEventListener('click', () => this.exportReport());
+
+        // Garantir que o aviso de erro esteja invisível ao carregar
+        this.hide('error');
+        this.hide('results');
     }
-
-    bindEvents() {
-        document.getElementById('collectClientInfo').addEventListener('click', () => {
-            this.collectClientInfo();
-        });
-
-        document.getElementById('exportReport').addEventListener('click', () => {
-            this.exportReport();
-        });
-    }
-
-    el(id) { return document.getElementById(id); }
-    show(id) { this.el(id).classList.remove('hidden'); }
-    hide(id) { this.el(id).classList.add('hidden'); }
-    setText(id, text) { this.el(id).textContent = text; }
 
     showLoading() {
         this.show('loading');
@@ -45,16 +40,14 @@ class ClientInfoApp {
         this.hide('error');
     }
 
-    async collectClientInfo() {
+    collectClientInfo() {
         this.showLoading();
         try {
-            const clientData = this.getClientInfo();
-            const serverInfo = this.getPseudoServerInfo();
-            const combined = { client_data: clientData, server_info: serverInfo, session_id: this.generateSessionId() };
-            this.displayClientInfo(combined);
+            const dados = this.coletarDados();
+            this.render(dados);
             this.showResults();
-        } catch (error) {
-            this.showError(`Erro: ${error.message}`);
+        } catch (e) {
+            this.showError(`Erro: ${e.message}`);
         } finally {
             this.hideLoading();
         }
@@ -83,11 +76,7 @@ class ClientInfoApp {
         }
     }
 
-    generateSessionId() {
-        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-        );
-    }
+    generateSessionId() { return this._uuid(); }
 
     getPseudoServerInfo() {
         return {
@@ -107,127 +96,106 @@ class ClientInfoApp {
         };
     }
 
-    // Abaixo, versões reduzidas dos coletores do app principal
-    getClientInfo() {
-        return {
-            browser: {
-                userAgent: navigator.userAgent,
-                language: navigator.language,
-                languages: navigator.languages || [],
-                platform: navigator.platform,
-                cookieEnabled: navigator.cookieEnabled,
-                onLine: navigator.onLine,
-                doNotTrack: navigator.doNotTrack,
-                vendor: navigator.vendor,
-                appName: navigator.appName,
-                appVersion: navigator.appVersion,
-            },
-            screen: {
-                width: screen.width,
-                height: screen.height,
-                availWidth: screen.availWidth,
-                availHeight: screen.availHeight,
-                colorDepth: screen.colorDepth,
-                pixelDepth: screen.pixelDepth,
-                orientation: screen.orientation ? screen.orientation.type : 'N/A'
-            },
-            window: {
-                innerWidth: window.innerWidth,
-                innerHeight: window.innerHeight,
-                outerWidth: window.outerWidth,
-                outerHeight: window.outerHeight,
-                devicePixelRatio: window.devicePixelRatio
-            },
-            timezone: {
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                offset: new Date().getTimezoneOffset(),
-            },
-            hardware: {
-                cores: navigator.hardwareConcurrency || 'N/A',
-                memory: navigator.deviceMemory || 'N/A',
-                maxTouchPoints: navigator.maxTouchPoints || 0,
-            },
-            performance: {
-                connection: {
-                    online: navigator.onLine,
-                    connectionType: this.detectConnectionType(),
-                    saveData: this.detectSaveData(),
-                    webRTC: { available: !!window.RTCPeerConnection }
-                }
-            },
-            timestamp: new Date().toISOString(),
-            localTime: new Date().toLocaleString()
+    // Coleta apenas 5 seções: navegador, tela, janela, rede, servidor
+    coletarDados() {
+        const navegador = {
+            userAgent: navigator.userAgent,
+            idioma: navigator.language,
+            idiomas: Array.isArray(navigator.languages) ? navigator.languages : [],
+            plataforma: navigator.platform,
+            cookies: navigator.cookieEnabled ? 'Habilitado' : 'Desabilitado',
+            online: navigator.onLine ? 'Sim' : 'Não'
         };
+
+        const tela = {
+            resolucao: `${screen.width}x${screen.height}`,
+            disponivel: `${screen.availWidth}x${screen.availHeight}`,
+            profundidadeDeCor: `${screen.colorDepth} bits`
+        };
+
+        const janela = {
+            largura: `${window.innerWidth}px`,
+            altura: `${window.innerHeight}px`,
+            devicePixelRatio: window.devicePixelRatio
+        };
+
+        const rede = {
+            status: navigator.onLine ? 'Conectado' : 'Desconectado',
+            tipoDispositivo: this._tipoDispositivo()
+        };
+
+        const servidor = {
+            host: location.host,
+            protocolo: location.protocol.replace(':',''),
+            timestamp: new Date().toISOString(),
+            sessionId: this._uuid()
+        };
+
+        return { navegador, tela, janela, rede, servidor };
     }
 
-    detectConnectionType() {
+    _tipoDispositivo() {
         const ua = navigator.userAgent.toLowerCase();
-        if (/mobile|android|iphone|ipad/.test(ua)) return 'Mobile';
+        if (/mobile|android|iphone|ipad|tablet/.test(ua)) return 'Mobile/Tablet';
         if (/desktop|laptop|pc|mac|windows/.test(ua)) return 'Desktop';
-        return 'Unknown';
+        return 'Desconhecido';
     }
 
-    detectSaveData() {
-        if (navigator.connection && navigator.connection.saveData !== undefined) {
-            return navigator.connection.saveData;
-        }
-        if (navigator.connection && navigator.connection.effectiveType) {
-            return navigator.connection.effectiveType === 'slow-2g' || navigator.connection.effectiveType === '2g';
-        }
-        return 'N/A';
-    }
-
-    displayClientInfo(data) {
-        const container = document.getElementById('clientInfo');
+    render(dados) {
+        const container = this.el('clientInfo');
         container.innerHTML = '';
 
-        const clientInfo = data.client_data;
-        const serverInfo = data.server_info;
-
-        const addSection = (title, items) => {
+        const sec = (titulo, pares) => {
             const section = document.createElement('div');
             section.className = 'info-section';
-            section.innerHTML = `<h4>${title}</h4>`;
-            items.forEach(item => {
+            section.innerHTML = `<h4>${titulo}</h4>`;
+            pares.forEach(([label, value]) => {
                 const div = document.createElement('div');
                 div.className = 'info-item';
-                div.innerHTML = `<span class="info-label">${item.label}:</span><span class="info-value">${item.value}</span>`;
+                div.innerHTML = `<span class="info-label">${label}:</span><span class="info-value">${value}</span>`;
                 section.appendChild(div);
             });
             container.appendChild(section);
         };
 
-        addSection('Navegador', [
-            { label: 'User Agent', value: clientInfo.browser.userAgent },
-            { label: 'Idioma', value: clientInfo.browser.language },
-            { label: 'Idiomas Suportados', value: Array.isArray(clientInfo.browser.languages) ? clientInfo.browser.languages.join(', ') : 'N/A' },
-            { label: 'Plataforma', value: clientInfo.browser.platform },
+        sec('Navegador', [
+            ['User Agent', dados.navegador.userAgent],
+            ['Idioma', dados.navegador.idioma],
+            ['Idiomas Suportados', dados.navegador.idiomas.join(', ') || 'N/A'],
+            ['Plataforma', dados.navegador.plataforma],
+            ['Cookies', dados.navegador.cookies],
+            ['Online', dados.navegador.online]
         ]);
 
-        addSection('Tela', [
-            { label: 'Resolução', value: `${clientInfo.screen.width}x${clientInfo.screen.height}` },
-            { label: 'Res. Disponível', value: `${clientInfo.screen.availWidth}x${clientInfo.screen.availHeight}` },
-            { label: 'Profundidade de Cor', value: `${clientInfo.screen.colorDepth} bits` },
+        sec('Tela', [
+            ['Resolução', dados.tela.resolucao],
+            ['Resolução Disponível', dados.tela.disponivel],
+            ['Profundidade de Cor', dados.tela.profundidadeDeCor]
         ]);
 
-        addSection('Janela', [
-            { label: 'Largura Interna', value: `${clientInfo.window.innerWidth}px` },
-            { label: 'Altura Interna', value: `${clientInfo.window.innerHeight}px` },
-            { label: 'Device Pixel Ratio', value: clientInfo.window.devicePixelRatio },
+        sec('Janela', [
+            ['Largura Interna', dados.janela.largura],
+            ['Altura Interna', dados.janela.altura],
+            ['Device Pixel Ratio', dados.janela.devicePixelRatio]
         ]);
 
-        addSection('Rede', [
-            { label: 'Status Online', value: clientInfo.performance.connection.online ? 'Conectado' : 'Desconectado' },
-            { label: 'Tipo de Dispositivo', value: clientInfo.performance.connection.connectionType },
-            { label: 'Economia de Dados', value: clientInfo.performance.connection.saveData === true ? 'Ativado' : (clientInfo.performance.connection.saveData === false ? 'Desativado' : 'N/A') },
+        sec('Rede', [
+            ['Status', dados.rede.status],
+            ['Tipo de Dispositivo', dados.rede.tipoDispositivo]
         ]);
 
-        addSection('Informações do "Servidor"', [
-            { label: 'Host', value: serverInfo.host },
-            { label: 'Protocolo', value: serverInfo.x_forwarded_proto },
-            { label: 'Timestamp', value: new Date(serverInfo.timestamp).toLocaleString() },
-            { label: 'Session ID', value: data.session_id },
+        sec('Informações do Servidor', [
+            ['Host', dados.servidor.host],
+            ['Protocolo', dados.servidor.protocolo],
+            ['Timestamp', new Date(dados.servidor.timestamp).toLocaleString()],
+            ['Session ID', dados.servidor.sessionId]
         ]);
+    }
+
+    _uuid() {
+        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
     }
 }
 
